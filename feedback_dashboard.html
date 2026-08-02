@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auralis Product Feedback Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;
+    --series-1-soft:  #cde2fb;
+    --status-critical:#d03b3b;
+    --status-warning: #fab219;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-1-soft:  #184f95;
+      --status-critical:#e66767;
+      --status-warning: #fab219;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-1-soft:  #184f95;
+    --status-critical:#e66767;
+    --status-warning: #fab219;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    padding: 24px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .table-scroll { overflow-x: auto; }
+
+  header.page-header { margin-bottom: 20px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .subtitle { color: var(--text-secondary); font-size: 0.9rem; margin: 0; }
+  .meta-line { color: var(--text-muted); font-size: 0.8rem; margin-top: 6px; }
+
+  .panel {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+
+  .dataset-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .dataset-toggle span.label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .seg button {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button.active {
+    background: var(--series-1);
+    color: white;
+    font-weight: 600;
+  }
+  .dataset-note { font-size: 0.78rem; color: var(--text-muted); }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: end;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; }
+  .field input[type="text"],
+  .field input[type="number"] {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-size: 0.85rem;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    width: 130px;
+    font-family: inherit;
+  }
+  .field.search input { width: 200px; }
+  .checkfield {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 6px;
+  }
+  .checkfield input { width: 16px; height: 16px; }
+  .checkfield label { font-size: 0.8rem; color: var(--text-secondary); }
+  .reset-btn {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .reset-btn:hover { background: var(--gridline); }
+
+  .result-count { font-size: 0.8rem; color: var(--text-muted); margin: 10px 0 0; }
+
+  table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.85rem; }
+  thead th {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 2px solid var(--baseline);
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--text-primary); }
+  thead th .arrow { font-size: 0.7rem; color: var(--series-1); margin-left: 4px; }
+  tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--gridline);
+    font-variant-numeric: tabular-nums;
+  }
+  tbody tr:hover td { background: var(--gridline); }
+  td.theme-cell { font-variant-numeric: normal; font-weight: 500; }
+  td.num { text-align: right; }
+  .na { color: var(--text-muted); }
+  .flag-high { color: var(--status-critical); font-weight: 600; }
+  .flag-none { color: var(--text-muted); }
+
+  .bar-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .bar-track { width: 70px; height: 8px; background: var(--gridline); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--series-1); border-radius: 4px; }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  footer.note {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  footer.note strong { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-header">
+    <h1>Auralis Product Feedback Dashboard</h1>
+    <p class="subtitle">Consolidated theme data from the audiologist survey, sales rep feedback, support emails, and Google reviews.</p>
+    <p class="meta-line" id="meta-line"></p>
+  </header>
+
+  <section class="panel">
+    <div class="dataset-toggle">
+      <span class="label">Dataset</span>
+      <div class="seg">
+        <button type="button" data-dataset="full" id="btn-full">Full set</button>
+        <button type="button" data-dataset="sample" id="btn-sample">Sample (test)</button>
+      </div>
+      <span class="dataset-note" id="dataset-note"></span>
+    </div>
+
+    <div class="filters">
+      <div class="field search">
+        <label for="f-search">Search theme</label>
+        <input type="text" id="f-search" placeholder="e.g. battery">
+      </div>
+      <div class="field">
+        <label for="f-min-mentions">Min. total mentions</label>
+        <input type="number" id="f-min-mentions" min="0" value="0">
+      </div>
+      <div class="field">
+        <label for="f-max-satisfaction">Max. audiologist satisfaction</label>
+        <input type="number" id="f-max-satisfaction" min="0" max="5" step="0.1" placeholder="5.0">
+      </div>
+      <div class="field">
+        <label for="f-max-review">Max. public review rating</label>
+        <input type="number" id="f-max-review" min="0" max="5" step="0.1" placeholder="5.0">
+      </div>
+      <div class="checkfield">
+        <input type="checkbox" id="f-urgency">
+        <label for="f-urgency">High-urgency sales flags only (&gt;0)</label>
+      </div>
+      <button class="reset-btn" id="reset-filters" type="button">Reset filters</button>
+    </div>
+
+    <p class="result-count" id="result-count"></p>
+  </section>
+
+  <section class="panel">
+    <div class="table-scroll">
+    <table id="theme-table">
+      <thead>
+        <tr>
+          <th data-key="theme">Theme<span class="arrow" data-arrow="theme"></span></th>
+          <th data-key="mentions" class="num">Total Mentions<span class="arrow" data-arrow="mentions"></span></th>
+          <th data-key="satisfaction" class="num">Audiologist Satisfaction (avg/5)<span class="arrow" data-arrow="satisfaction"></span></th>
+          <th data-key="urgency" class="num">Sales High-Urgency Flags<span class="arrow" data-arrow="urgency"></span></th>
+          <th data-key="reviewRating" class="num">Public Review Rating (avg/5)<span class="arrow" data-arrow="reviewRating"></span></th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    </div>
+    <div class="empty-state" id="empty-state" style="display:none;">No themes match the current filters.</div>
+  </section>
+
+  <footer class="note panel">
+    <p><strong>Reading this table:</strong> every figure comes directly from the underlying consolidation report — this dashboard only sorts and filters what is already there; it does not compute a combined score or suggest a priority order.</p>
+    <p id="na-note"><strong>n/a:</strong> a theme not tagged in any Google review for that period is shown as n/a rather than 0.</p>
+  </footer>
+
+</div>
+
+<script>
+const DATASETS = {
+  full: {
+    label: "Full set",
+    totalMentions: 136,
+    period: "Survey: May–Jun 2026 | Sales log: Apr–Jun 2026 | Support emails: May–Jun 2026 | Reviews: Jan–Jun 2026",
+    source: "Auralis_Feedback_Consolidation_Report_FullSet.docx",
+    note: "136 total mentions across 48 survey responses, 36 sales entries, 28 support emails, 24 reviews.",
+    rows: [
+      { theme: "Fitting software workflow",     mentions: 24, satisfaction: 3.5,  urgency: 3, reviewRating: 3.4 },
+      { theme: "Speech understanding in noise",  mentions: 23, satisfaction: 3.0,  urgency: 0, reviewRating: 3.2 },
+      { theme: "Bluetooth connectivity",         mentions: 23, satisfaction: 3.0,  urgency: 3, reviewRating: 3.4 },
+      { theme: "Rechargeable battery life",      mentions: 13, satisfaction: 3.2,  urgency: 2, reviewRating: 3.0 },
+      { theme: "Mobile app usability",           mentions: 13, satisfaction: 2.4,  urgency: 0, reviewRating: 2.0 },
+      { theme: "Feedback/whistling control",     mentions: 10, satisfaction: 3.25, urgency: 1, reviewRating: 4.0 },
+      { theme: "Charger reliability",            mentions: 9,  satisfaction: 3.25, urgency: 2, reviewRating: 2.0 },
+      { theme: "Remote programming",             mentions: 8,  satisfaction: 2.3,  urgency: 2, reviewRating: null },
+      { theme: "Pediatric fitting options",      mentions: 7,  satisfaction: 2.0,  urgency: 1, reviewRating: 3.0 },
+      { theme: "Tinnitus features",              mentions: 6,  satisfaction: 3.5,  urgency: 1, reviewRating: null }
+    ]
+  },
+  sample: {
+    label: "Sample (test)",
+    totalMentions: 60,
+    period: "Review period: July 2026 (15 responses per source)",
+    source: "Auralis_Feedback_Consolidation_Report.docx",
+    note: "60 total mentions — small sample used to test this dashboard before the full dataset was loaded.",
+    rows: [
+      { theme: "Mobile app usability",           mentions: 7, satisfaction: 2.0, urgency: 0, reviewRating: 3.0 },
+      { theme: "Bluetooth connectivity",         mentions: 8, satisfaction: 3.0, urgency: 0, reviewRating: 4.0 },
+      { theme: "Rechargeable battery life",      mentions: 8, satisfaction: 3.5, urgency: 1, reviewRating: 3.5 },
+      { theme: "Fitting software workflow",      mentions: 8, satisfaction: 3.5, urgency: 0, reviewRating: 3.5 },
+      { theme: "Speech understanding in noise",  mentions: 8, satisfaction: 4.0, urgency: 0, reviewRating: 2.5 },
+      { theme: "Charger reliability",            mentions: 4, satisfaction: 3.0, urgency: 1, reviewRating: 4.0 },
+      { theme: "Feedback/whistling control",     mentions: 4, satisfaction: 3.0, urgency: 0, reviewRating: 4.0 },
+      { theme: "Pediatric fitting options",      mentions: 4, satisfaction: 3.0, urgency: 1, reviewRating: 4.0 },
+      { theme: "Remote programming",             mentions: 5, satisfaction: 3.0, urgency: 0, reviewRating: 5.0 },
+      { theme: "Tinnitus features",              mentions: 4, satisfaction: 4.0, urgency: 0, reviewRating: 3.0 }
+    ]
+  }
+};
+
+let currentDatasetKey = "full";
+let sortKey = "theme";
+let sortDir = "asc";
+
+const els = {
+  metaLine: document.getElementById("meta-line"),
+  datasetNote: document.getElementById("dataset-note"),
+  btnFull: document.getElementById("btn-full"),
+  btnSample: document.getElementById("btn-sample"),
+  search: document.getElementById("f-search"),
+  minMentions: document.getElementById("f-min-mentions"),
+  maxSatisfaction: document.getElementById("f-max-satisfaction"),
+  maxReview: document.getElementById("f-max-review"),
+  urgencyOnly: document.getElementById("f-urgency"),
+  resetBtn: document.getElementById("reset-filters"),
+  resultCount: document.getElementById("result-count"),
+  tbody: document.getElementById("table-body"),
+  emptyState: document.getElementById("empty-state"),
+  table: document.getElementById("theme-table")
+};
+
+function currentDataset() { return DATASETS[currentDatasetKey]; }
+
+function applyFilters(rows) {
+  const q = els.search.value.trim().toLowerCase();
+  const minMentions = Number(els.minMentions.value) || 0;
+  const maxSat = els.maxSatisfaction.value === "" ? null : Number(els.maxSatisfaction.value);
+  const maxRev = els.maxReview.value === "" ? null : Number(els.maxReview.value);
+  const urgencyOnly = els.urgencyOnly.checked;
+
+  return rows.filter(r => {
+    if (q && !r.theme.toLowerCase().includes(q)) return false;
+    if (r.mentions < minMentions) return false;
+    if (maxSat !== null && r.satisfaction > maxSat) return false;
+    if (maxRev !== null && (r.reviewRating === null || r.reviewRating > maxRev)) return false;
+    if (urgencyOnly && r.urgency <= 0) return false;
+    return true;
+  });
+}
+
+function applySort(rows) {
+  const dir = sortDir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    if (typeof av === "string") return av.localeCompare(bv) * dir;
+    return (av - bv) * dir;
+  });
+}
+
+function fmtNum(v, digits) {
+  if (v === null || v === undefined) return '<span class="na">n/a</span>';
+  return digits ? v.toFixed(digits) : String(v);
+}
+
+function render() {
+  const ds = currentDataset();
+  const filtered = applyFilters(ds.rows);
+  const sorted = applySort(filtered);
+  const maxMentions = Math.max(...ds.rows.map(r => r.mentions));
+
+  els.metaLine.textContent = ds.period + "  |  Source: " + ds.source;
+  els.datasetNote.textContent = ds.note;
+  els.btnFull.classList.toggle("active", currentDatasetKey === "full");
+  els.btnSample.classList.toggle("active", currentDatasetKey === "sample");
+  els.resultCount.textContent = "Showing " + sorted.length + " of " + ds.rows.length + " themes (" + ds.totalMentions + " total mentions in this dataset)";
+
+  document.querySelectorAll("[data-arrow]").forEach(el => {
+    const key = el.getAttribute("data-arrow");
+    el.textContent = key === sortKey ? (sortDir === "asc" ? "▲" : "▼") : "";
+  });
+
+  if (sorted.length === 0) {
+    els.tbody.innerHTML = "";
+    els.emptyState.style.display = "block";
+    els.table.style.display = "none";
+    return;
+  }
+  els.emptyState.style.display = "none";
+  els.table.style.display = "table";
+
+  els.tbody.innerHTML = sorted.map(r => {
+    const barPct = maxMentions ? Math.round((r.mentions / maxMentions) * 100) : 0;
+    const urgencyClass = r.urgency > 0 ? "flag-high" : "flag-none";
+    return `<tr>
+      <td class="theme-cell">${escapeHtml(r.theme)}</td>
+      <td class="num">
+        <div class="bar-cell">
+          <span>${r.mentions}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${barPct}%"></div></div>
+        </div>
+      </td>
+      <td class="num">${fmtNum(r.satisfaction, 2)}</td>
+      <td class="num ${urgencyClass}">${r.urgency}</td>
+      <td class="num">${fmtNum(r.reviewRating, 1)}</td>
+    </tr>`;
+  }).join("");
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function resetFilters() {
+  els.search.value = "";
+  els.minMentions.value = 0;
+  els.maxSatisfaction.value = "";
+  els.maxReview.value = "";
+  els.urgencyOnly.checked = false;
+  render();
+}
+
+document.querySelectorAll("thead th[data-key]").forEach(th => {
+  th.addEventListener("click", () => {
+    const key = th.getAttribute("data-key");
+    if (sortKey === key) {
+      sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      sortKey = key;
+      sortDir = "asc";
+    }
+    render();
+  });
+});
+
+els.btnFull.addEventListener("click", () => { currentDatasetKey = "full"; render(); });
+els.btnSample.addEventListener("click", () => { currentDatasetKey = "sample"; render(); });
+[els.search, els.minMentions, els.maxSatisfaction, els.maxReview, els.urgencyOnly].forEach(el => {
+  el.addEventListener("input", render);
+});
+els.resetBtn.addEventListener("click", resetFilters);
+
+render();
+</script>
+</body>
+</html>
